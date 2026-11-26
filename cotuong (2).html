@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cổng Game Cờ Web3 • Cờ Tướng • Cờ Vua • Caro • Ô Ăn Quan</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Ethers.js v6 để kết nối ví MetaMask / OKX / Core Mainnet (1116) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+  <!-- Font Inter & Noto Serif SC cho quân cờ truyền thống -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Serif+SC:wght@700;900&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at top, #1f1611 0%, #0d0a09 65%, #070505 100%);
+      color: #f5f5f4;
+      min-height: 100vh;
+    }
+    .hanzi {
+      font-family: 'Noto Serif SC', serif;
+    }
+    /* Mặt bàn gỗ cổ điển */
+    .board-wood {
+      background: linear-gradient(145deg, #e7c288 0%, #d5a35c 50%, #c38c43 100%);
+      box-shadow: inset 0 0 24px rgba(92, 48, 12, 0.38), 0 18px 40px rgba(0, 0, 0, 0.65);
+      border: 4px solid #6b3b14;
+    }
+    /* Quân cờ Tướng 3D nổi */
+    .piece-token {
+      transition: transform 0.14s ease, box-shadow 0.14s ease;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.55), inset 0 2px 3px rgba(255, 255, 255, 0.75);
+      user-select: none;
+    }
+    .piece-token:active {
+      transform: scale(0.94);
+    }
+    .piece-selected {
+      transform: translateY(-4px) scale(1.1);
+      box-shadow: 0 0 0 3px #facc15, 0 10px 18px rgba(250, 204, 21, 0.55) !important;
+      z-index: 30;
+    }
+    .piece-draft {
+      box-shadow: 0 0 0 3px #38bdf8, 0 8px 16px rgba(56, 189, 248, 0.65) !important;
+      animation: pulseDraft 1.2s infinite ease-in-out;
+    }
+    @keyframes pulseDraft {
+      0%, 100% { transform: scale(1.04); }
+      50% { transform: scale(1.12); }
+    }
+    /* Hiệu ứng chuyển tab mượt mà */
+    @keyframes tabFadeIn {
+      from { opacity: 0; transform: translateY(4px) scale(0.99); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .board-smooth-enter {
+      animation: tabFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    /* Thanh cuộn gọn */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.04); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb { background: rgba(217, 119, 6, 0.45); border-radius: 9999px; }
+  </style>
+</head>
+<body class="antialiased selection:bg-amber-500 selection:text-stone-950">
+
+  <!-- THANH THÔNG BÁO TOAST -->
+  <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-[calc(100%-2rem)] pointer-events-none"></div>
+
+  <!-- HEADER + THANH CHỌN 4 MÔN CỜ -->
+  <header class="border-b border-amber-900/40 bg-stone-950/90 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex flex-col gap-2">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-red-700 flex items-center justify-center shadow-lg border border-amber-300/40">
+            <span id="headerEmblem" class="hanzi text-lg font-black text-amber-50">帥</span>
+          </div>
+          <div>
+            <h1 class="text-sm sm:text-lg font-extrabold tracking-tight text-amber-100">
+              Cổng Game Trí Tuệ Web3 <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">CORE PvP & AI</span>
+            </h1>
+            <p class="text-[11px] text-stone-400">Cược CORE tự do • Đồng hồ liền bàn • Chat trực tiếp</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <div id="walletBadge" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-stone-900 border border-stone-700 text-xs">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="walletBalance" class="font-bold text-amber-300">0.00 CORE</span>
+          </div>
+          <button id="connectWalletBtn" onclick="connectWallet()"
+            class="px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-stone-950 shadow-lg shadow-amber-900/30 transition active:scale-95">
+            Kết Nối Ví CORE
+          </button>
+        </div>
+      </div>
+
+      <!-- THANH CHỌN 4 MÔN CỜ -->
+      <nav class="grid grid-cols-4 gap-1.5 bg-stone-900/90 p-1.5 rounded-xl border border-stone-800">
+        <button id="gameTab_xiangqi" onclick="switchGameType('xiangqi')"
+          class="py-2 px-1.5 rounded-lg text-xs sm:text-sm font-extrabold bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow transition-all duration-200 active:scale-95">
+          🏮 Cờ Tướng
+        </button>
+        <button id="gameTab_chess" onclick="switchGameType('chess')"
+          class="py-2 px-1.5 rounded-lg text-xs sm:text-sm font-bold text-stone-300 hover:bg-stone-800 transition-all duration-200 active:scale-95">
+          ♛ Cờ Vua
+        </button>
+        <button id="gameTab_caro" onclick="switchGameType('caro')"
+          class="py-2 px-1.5 rounded-lg text-xs sm:text-sm font-bold text-stone-300 hover:bg-stone-800 transition-all duration-200 active:scale-95">
+          ⭕ Cờ Caro
+        </button>
+        <button id="gameTab_oanquan" onclick="switchGameType('oanquan')"
+          class="py-2 px-1.5 rounded-lg text-xs sm:text-sm font-bold text-stone-300 hover:bg-stone-800 transition-all duration-200 active:scale-95">
+          🪨 Ô Ăn Quan
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- BỐ CỤC CHÍNH 3 CỘT -->
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+    <!-- CỘT TRÁI (4 CỘT): CHẾ ĐỘ CHƠI + TẠO PHÒNG CƯỢC CORE + SẢNH CHỜ -->
+    <section class="lg:col-span-4 space-y-4">
+
+      <!-- CHỌN CHẾ ĐỘ: CHƠI VỚI NGƯỜI / CHƠI VỚI MÁY -->
+      <div class="bg-stone-900/85 border border-stone-800 rounded-2xl p-3.5 shadow-xl">
+        <label class="block text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-2">Chế Độ Thi Đấu</label>
+        <div class="grid grid-cols-2 gap-2 bg-stone-950 p-1.5 rounded-xl border border-stone-800">
+          <button id="tabPvP" onclick="switchGameMode('pvp')"
+            class="py-2 px-3 rounded-lg text-xs sm:text-sm font-bold bg-amber-500 text-stone-950 shadow transition">
+            ⚔️ Chơi Với Người
+          </button>
+          <button id="tabAI" onclick="switchGameMode('ai')"
+            class="py-2 px-3 rounded-lg text-xs sm:text-sm font-bold text-stone-300 hover:text-white transition">
+            🤖 Chơi Với Máy
+          </button>
+        </div>
+
+        <!-- TÙY CHỌN KHI CHƠI VỚI MÁY (AI) -->
+        <div id="aiSetupPanel" class="hidden mt-3.5 space-y-3 pt-3 border-t border-stone-800">
+          <div>
+            <label class="block text-xs font-semibold text-stone-300 mb-1.5">Độ khó của Máy (AI)</label>
+            <select id="aiDifficulty" class="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-sm text-amber-200 focus:outline-none focus:border-amber-500">
+              <option value="1">Cấp 1 — Nhập Môn (Đánh nhanh)</option>
+              <option value="2" selected>Cấp 2 — Trung Cấp (Cân bằng)</option>
+              <option value="3">Cấp 3 — Cao Thủ (Tính sâu hơn)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-stone-300 mb-1.5">Thời gian mỗi nước đi</label>
+            <select id="aiTurnSeconds" class="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-sm text-stone-200 focus:outline-none focus:border-amber-500">
+              <option value="15">15 giây / nước</option>
+              <option value="30" selected>30 giây / nước</option>
+              <option value="60">60 giây / nước</option>
+              <option value="90">90 giây / nước</option>
+            </select>
+          </div>
+          <button onclick="startAIGame()"
+            class="w-full py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-stone-950 shadow-lg transition active:scale-95">
+            Bắt Đầu Đấu Với Máy (Miễn Phí)
+          </button>
+        </div>
+      </div>
+
+      <!-- PANEL TẠO PHÒNG & SẢNH CHỜ PVP (CƯỢC CORE) -->
+      <div id="pvpLobbyPanel" class="space-y-4">
+        <!-- Form tạo phòng mới -->
+        <div class="bg-stone-900/85 border border-amber-800/40 rounded-2xl p-3.5 shadow-xl space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-extrabold text-amber-300 flex items-center gap-1.5">
+              <span>🏮</span> Tạo Phòng <span id="activeGameLabel" class="text-white">Cờ Tướng</span>
+            </h2>
+            <span class="text-[11px] px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-300 border border-rose-500/30">
+              Hủy ván phạt 20%
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-xs font-semibold text-stone-300 mb-1">Mức cược (CORE)</label>
+              <input id="betAmountInput" type="number" step="0.1" min="0.1" value="5"
+                class="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-sm font-bold text-amber-300 focus:outline-none focus:border-amber-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-stone-300 mb-1">Giây / 1 nước</label>
+              <select id="turnSecondsInput"
+                class="w-full bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-sm font-semibold text-stone-100 focus:outline-none focus:border-amber-500">
+                <option value="15">15 giây</option>
+                <option value="30" selected>30 giây</option>
+                <option value="45">45 giây</option>
+                <option value="60">60 giây</option>
+                <option value="90">90 giây</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-1.5">
+            <button type="button" onclick="setQuickBet(1)" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-stone-800 hover:bg-stone-700 text-stone-200">1 CORE</button>
+            <button type="button" onclick="setQuickBet(5)" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-stone-800 hover:bg-stone-700 text-amber-300">5 CORE</button>
+            <button type="button" onclick="setQuickBet(10)" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-stone-800 hover:bg-stone-700 text-stone-200">10 CORE</button>
+            <button type="button" onclick="setQuickBet(50)" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-stone-800 hover:bg-stone-700 text-stone-200">50 CORE</button>
+          </div>
+
+          <button onclick="createPvPRoom()"
+            class="w-full py-2.5 rounded-xl font-extrabold text-sm bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 hover:brightness-110 text-stone-950 shadow-lg transition active:scale-95">
+            + Tạo Phòng & Mời Đối Thủ
+          </button>
+        </div>
+
+        <!-- Danh sách phòng đang chờ người vào đánh -->
+        <div class="bg-stone-900/85 border border-stone-800 rounded-2xl p-3.5 shadow-xl">
+          <div class="flex items-center justify-between mb-2.5">
+            <h3 class="text-xs font-extrabold uppercase tracking-wider text-stone-300">Sảnh Phòng Đang Mở</h3>
+            <button onclick="renderRoomList()" class="text-xs text-amber-400 hover:underline">Làm mới</button>
+          </div>
+          <div id="openRoomsList" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+
+      <!-- BẢNG TRẠNG THÁI VÁN ĐẤU & NÚT XIN HỦY CHỊU PHẠT % -->
+      <div id="activeMatchCard" class="hidden bg-stone-900/95 border border-amber-500/40 rounded-2xl p-3.5 shadow-xl space-y-3">
+        <div class="flex items-center justify-between border-b border-stone-800 pb-2">
+          <div>
+            <span id="matchRoomBadge" class="text-xs font-bold text-amber-400">Phòng #101 • Cờ Tướng</span>
+            <p id="matchPotInfo" class="text-sm font-extrabold text-white">Tổng quỹ: 10 CORE (30s/nước)</p>
+          </div>
+          <span id="matchStatusTag" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            Đang đấu
+          </span>
+        </div>
+
+        <div id="pvpPenaltyControls" class="space-y-2">
+          <button id="closeWaitingRoomBtn" onclick="closeMyOpenRoom()"
+            class="hidden w-full py-2 rounded-xl text-xs font-bold bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-600 transition">
+            Đóng Phòng Chờ (Hoàn 100% Cược)
+          </button>
+
+          <button id="cancelWithPenaltyBtn" onclick="openCancelPenaltyModal()"
+            class="w-full py-2.5 rounded-xl text-xs font-bold bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-700/70 transition flex items-center justify-center gap-1.5">
+            <span>🏳️</span> Xin Hủy Chơi (Chịu Phạt 20% Cược)
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- CỘT GIỮA (5 CỘT): BÀN CỜ TÍCH HỢP ĐỒNG HỒ LIỀN KHUNG + NÚT "ĐÃ ĐÁNH XONG NƯỚC" -->
+    <section class="lg:col-span-5 flex flex-col items-center space-y-3">
+
+      <!-- KHUNG BÀN CỜ TÍCH HỢP LIỀN ĐỒNG HỒ ĐẾM NGƯỢC TRÊN & DƯỚI -->
+      <div class="w-full max-w-[460px] bg-stone-950/95 border-2 border-amber-700/60 rounded-3xl p-2 sm:p-2.5 shadow-2xl space-y-2">
+
+        <!-- Dải đồng hồ đối thủ gắn liền mép trên bàn cờ -->
+        <div class="bg-stone-900/95 border border-stone-800 rounded-2xl px-3 py-1.5 relative overflow-hidden">
+          <div class="flex items-center justify-between gap-2 relative z-10">
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="w-7 h-7 rounded-full bg-stone-800 border border-stone-500 flex items-center justify-center font-black hanzi text-xs text-stone-100 shrink-0">
+                將
+              </div>
+              <div class="truncate">
+                <p id="opponentName" class="text-xs font-bold text-stone-200 truncate">Đối thủ (Quân Đen)</p>
+                <p id="opponentSub" class="text-[10px] text-stone-400 truncate">Đang chờ vào bàn...</p>
+              </div>
+            </div>
+            <div id="blackTimerBox" class="px-2.5 py-0.5 rounded-xl bg-stone-950 border border-stone-700 font-mono font-extrabold text-sm text-stone-400 shrink-0">
+              00:30
+            </div>
+          </div>
+          <!-- Thanh tiến trình thời gian đối thủ -->
+          <div class="w-full h-1 bg-stone-800 rounded-full mt-1.5 overflow-hidden">
+            <div id="blackTimerBar" class="h-full bg-sky-400 transition-all duration-500" style="width: 100%"></div>
+          </div>
+        </div>
+
+        <!-- BÀN CỜ TƯƠNG TÁC -->
+        <div id="boardWrapper" class="w-full aspect-[9/10] board-wood rounded-2xl p-2 sm:p-3 relative select-none transition-all duration-200">
+          <div id="boardContainer" class="w-full h-full relative">
+            <!-- 1. Bàn Cờ Tướng (SVG + Quân cờ) -->
+            <svg id="xiangqiSvg" viewBox="0 0 900 1000" class="w-full h-full pointer-events-none">
+              <rect x="50" y="50" width="800" height="900" fill="none" stroke="#4a2508" stroke-width="5" />
+              <g stroke="#4a2508" stroke-width="2.5">
+                <line x1="50" y1="150" x2="850" y2="150" />
+                <line x1="50" y1="250" x2="850" y2="250" />
+                <line x1="50" y1="350" x2="850" y2="350" />
+                <line x1="50" y1="450" x2="850" y2="450" />
+                <line x1="50" y1="550" x2="850" y2="550" />
+                <line x1="50" y1="650" x2="850" y2="650" />
+                <line x1="50" y1="750" x2="850" y2="750" />
+                <line x1="50" y1="850" x2="850" y2="850" />
+              </g>
+              <g stroke="#4a2508" stroke-width="2.5">
+                <line x1="150" y1="50" x2="150" y2="450" /><line x1="150" y1="550" x2="150" y2="950" />
+                <line x1="250" y1="50" x2="250" y2="450" /><line x1="250" y1="550" x2="250" y2="950" />
+                <line x1="350" y1="50" x2="350" y2="450" /><line x1="350" y1="550" x2="350" y2="950" />
+                <line x1="450" y1="50" x2="450" y2="450" /><line x1="450" y1="550" x2="450" y2="950" />
+                <line x1="550" y1="50" x2="550" y2="450" /><line x1="550" y1="550" x2="550" y2="950" />
+                <line x1="650" y1="50" x2="650" y2="450" /><line x1="650" y1="550" x2="650" y2="950" />
+                <line x1="750" y1="50" x2="750" y2="450" /><line x1="750" y1="550" x2="750" y2="950" />
+              </g>
+              <g stroke="#4a2508" stroke-width="2.5">
+                <line x1="350" y1="50" x2="550" y2="250" />
+                <line x1="550" y1="50" x2="350" y2="250" />
+                <line x1="350" y1="750" x2="550" y2="950" />
+                <line x1="550" y1="750" x2="350" y2="950" />
+              </g>
+              <text x="230" y="516" fill="#4a2508" font-size="44" font-weight="bold" class="hanzi">楚 河</text>
+              <text x="530" y="516" fill="#4a2508" font-size="44" font-weight="bold" class="hanzi">漢 界</text>
+            </svg>
+            <div id="piecesLayer" class="absolute inset-0"></div>
+
+            <!-- 2. Bàn Cờ Vua (8x8) -->
+            <div id="chessBoardLayer" class="hidden w-full h-full grid grid-cols-8 grid-rows-8 rounded-xl overflow-hidden border-2 border-amber-900"></div>
+
+            <!-- 3. Bàn Cờ Caro (12x12) -->
+            <div id="caroBoardLayer" class="hidden w-full h-full grid grid-cols-12 grid-rows-12 bg-amber-100 rounded-xl overflow-hidden border-2 border-amber-900"></div>
+
+            <!-- 4. Bàn Ô Ăn Quan (2 Quan + 10 Ô Dân) -->
+            <div id="oanquanBoardLayer" class="hidden w-full h-full flex flex-col justify-center gap-3 p-2"></div>
+          </div>
+        </div>
+
+        <!-- Dải đồng hồ của bạn gắn liền mép dưới bàn cờ -->
+        <div class="bg-stone-900/95 border border-amber-700/50 rounded-2xl px-3 py-1.5 relative overflow-hidden">
+          <div class="flex items-center justify-between gap-2 relative z-10">
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="w-7 h-7 rounded-full bg-red-900/80 border border-red-400 flex items-center justify-center font-black hanzi text-xs text-red-100 shrink-0">
+                帥
+              </div>
+              <div class="truncate">
+                <p id="playerName" class="text-xs font-bold text-amber-300 truncate">Bạn (Quân Đỏ - Đi Tiên)</p>
+                <p id="turnHint" class="text-[10px] text-stone-300 truncate">Chọn quân Đỏ để di chuyển</p>
+              </div>
+            </div>
+            <div id="redTimerBox" class="px-2.5 py-0.5 rounded-xl bg-stone-950 border border-amber-500/60 font-mono font-extrabold text-sm text-amber-400 shrink-0">
+              00:30
+            </div>
+          </div>
+          <!-- Thanh tiến trình thời gian của bạn -->
+          <div class="w-full h-1 bg-stone-800 rounded-full mt-1.5 overflow-hidden">
+            <div id="redTimerBar" class="h-full bg-amber-400 transition-all duration-500" style="width: 100%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CỤM NÚT XÁC NHẬN NƯỚC ĐI ("ĐÃ ĐÁNH XONG NƯỚC" / "ĐI LẠI") -->
+      <div class="w-full max-w-[460px] grid grid-cols-5 gap-2">
+        <button id="undoDraftBtn" onclick="undoDraftMove()" disabled
+          class="col-span-2 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm bg-stone-800 text-stone-400 border border-stone-700 disabled:opacity-40 hover:bg-stone-700 hover:text-white transition">
+          ↩ Chọn Lại
+        </button>
+        <button id="confirmMoveBtn" onclick="confirmPlayerMove()" disabled
+          class="col-span-3 py-2.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm bg-gradient-to-r from-emerald-500 to-green-600 text-stone-950 shadow-lg shadow-emerald-950/50 disabled:opacity-40 hover:brightness-110 transition active:scale-95">
+          ✅ Đã Đánh Xong Nước
+        </button>
+      </div>
+    </section>
+
+    <!-- CỘT PHẢI (3 CỘT): KHUNG CHAT PHÒNG ĐẤU + LỊCH SỬ NƯỚC ĐI -->
+    <section class="lg:col-span-3 space-y-4">
+
+      <!-- KHUNG CHAT TRỰC TIẾP TRONG PHÒNG -->
+      <div class="bg-stone-900/90 border border-stone-800 rounded-2xl p-3.5 shadow-xl flex flex-col h-[370px]">
+        <div class="flex items-center justify-between border-b border-stone-800 pb-2 mb-2">
+          <h3 class="text-xs font-extrabold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+            <span>💬</span> Chat Phòng Đấu
+          </h3>
+          <span id="chatOnlineBadge" class="text-[11px] text-emerald-400 font-semibold">● Trực tuyến</span>
+        </div>
+
+        <div id="chatMessages" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
+          <div class="bg-stone-950/80 border border-stone-800 rounded-xl p-2.5 text-stone-400">
+            Chào mừng! Bạn có thể chọn tab Cờ Tướng, Cờ Vua, Caro hoặc Ô Ăn Quan ở trên để tạo phòng cược CORE hoặc đấu với Máy.
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-1 my-2 pt-2 border-t border-stone-800/80">
+          <button onclick="sendQuickChat('Nước đi hay đấy! 👏')" class="px-2 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-[11px] text-stone-200">Hay đấy 👏</button>
+          <button onclick="sendQuickChat('Cẩn thận nhé! 🔥')" class="px-2 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-[11px] text-amber-300">Cẩn thận 🔥</button>
+          <button onclick="sendQuickChat('Nhanh tay lên bạn ơi ⏳')" class="px-2 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-[11px] text-stone-200">Nhanh tay ⏳</button>
+          <button onclick="sendQuickChat('Chúc bạn may mắn! 🤝')" class="px-2 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-[11px] text-stone-200">Chúc may mắn 🤝</button>
+        </div>
+
+        <form onsubmit="handleChatSubmit(event)" class="flex gap-1.5">
+          <input id="chatInput" type="text" maxlength="120" placeholder="Nhắn tin cho đối thủ..."
+            class="flex-1 bg-stone-950 border border-stone-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500" />
+          <button type="submit"
+            class="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-extrabold text-xs transition">
+            Gửi
+          </button>
+        </form>
+      </div>
+
+      <!-- NHẬT KÝ NƯỚC ĐI -->
+      <div class="bg-stone-900/85 border border-stone-800 rounded-2xl p-3.5 shadow-xl">
+        <h3 class="text-xs font-extrabold uppercase tracking-wider text-stone-400 mb-2">📜 Lịch Sử Nước Đi</h3>
+        <div id="moveHistoryList" class="text-xs text-stone-300 space-y-1 max-h-32 overflow-y-auto font-mono">
+          <p class="text-stone-500 italic">Chưa có nước đi nào...</p>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- MODAL XÁC NHẬN HỦY CHƠI CHỊU PHẠT % -->
+  <div id="cancelPenaltyModal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-stone-900 border border-rose-600/50 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-xl">⚠️</div>
+        <div>
+          <h3 class="text-base font-extrabold text-white">Xác Nhận Xin Hủy Ván Đấu?</h3>
+          <p class="text-xs text-stone-400">Hủy ngang ván sẽ bị khấu trừ <strong class="text-rose-400">20% tiền cược</strong> bồi thường cho đối thủ.</p>
+        </div>
+      </div>
+
+      <div id="penaltyBreakdownBox" class="bg-stone-950 border border-stone-800 rounded-xl p-3.5 text-xs space-y-1.5">
+        <div class="flex justify-between">
+          <span class="text-stone-400">Tiền cược ban đầu của bạn:</span>
+          <span id="modalOriginalBet" class="font-bold text-white">5.00 CORE</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-stone-400">Phí phạt hủy ngang (20%):</span>
+          <span id="modalPenaltyFee" class="font-bold text-rose-400">- 1.00 CORE</span>
+        </div>
+        <div class="flex justify-between border-t border-stone-800 pt-1.5 text-sm">
+          <span class="font-bold text-stone-200">Số tiền bạn nhận lại:</span>
+          <span id="modalRefundAmount" class="font-extrabold text-emerald-400">4.00 CORE</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2.5">
+        <button onclick="closeCancelPenaltyModal()"
+          class="py-2.5 rounded-xl font-bold text-xs bg-stone-800 hover:bg-stone-700 text-stone-200">
+          Quay Lại Đánh Tiếp
+        </button>
+        <button onclick="confirmCancelWithPenalty()"
+          class="py-2.5 rounded-xl font-extrabold text-xs bg-rose-600 hover:bg-rose-500 text-white shadow-lg">
+          Đồng Ý Hủy & Chịu Phạt
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL KẾT THÚC VÁN -->
+  <div id="resultModal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-stone-900 border border-amber-500/50 rounded-2xl max-w-md w-full p-5 shadow-2xl text-center space-y-4">
+      <div id="resultIcon" class="text-4xl">🏆</div>
+      <h3 id="resultTitle" class="text-xl font-extrabold text-amber-300">Chúc Mừng Chiến Thắng!</h3>
+      <p id="resultDesc" class="text-sm text-stone-300">Bạn đã giành chiến thắng và nhận toàn bộ quỹ phòng.</p>
+      <button onclick="resetToLobbyAfterMatch()"
+        class="w-full py-2.5 rounded-xl font-extrabold text-sm bg-gradient-to-r from-amber-500 to-orange-600 text-stone-950">
+        Về Sảnh Phòng / Chơi Ván Mới
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // CẤU HÌNH MẠNG CORE MAINNET (CHAIN ID: 1116) & METADATA 4 MÔN CỜ
+    // =========================================================================
+    const CORE_CHAIN_ID_HEX = "0x45c"; // 1116
+    const PENALTY_PERCENT = 20;
+
+    const GAME_META = {
+      xiangqi: {
+        name: "Cờ Tướng",
+        emblem: "帥",
+        p1: "Bạn (Quân Đỏ - Đi Tiên)",
+        p2: "Đối thủ (Quân Đen)",
+        hint: "Chọn quân Đỏ để di chuyển"
+      },
+      chess: {
+        name: "Cờ Vua",
+        emblem: "♔",
+        p1: "Bạn (Quân Trắng - Đi Tiên)",
+        p2: "Đối thủ (Quân Đen)",
+        hint: "Chọn quân Trắng (♔♕♖♗♘♙) để đi"
+      },
+      caro: {
+        name: "Cờ Caro",
+        emblem: "⭕",
+        p1: "Bạn (Quân X - Đi Tiên)",
+        p2: "Đối thủ (Quân O)",
+        hint: "Chạm ô trống để đặt X (5 ô liền thắng)"
+      },
+      oanquan: {
+        name: "Ô Ăn Quan",
+        emblem: "🪨",
+        p1: "Bạn (Hàng Dưới)",
+        p2: "Đối thủ (Hàng Trên)",
+        hint: "Chọn 1 ô dân hàng dưới để rải quân"
+      }
+    };
+
+    let currentGameType = "xiangqi";
+    let userAddress = null;
+    let gameMode = "pvp"; // "pvp" | "ai"
+    let currentTurn = "red"; // "red" (người chơi 1) | "black" (đối thủ / AI)
+    let turnDuration = 30;
+    let timeLeft = 30;
+    let timerInterval = null;
+    let isMatchActive = false;
+    let activeRoom = null;
+
+    let openRooms = [
+      { id: 101, gameType: "xiangqi", creator: "0x71C...89A2", bet: 5, turnSeconds: 30 },
+      { id: 102, gameType: "chess", creator: "0x3F9...12B4", bet: 10, turnSeconds: 45 },
+      { id: 103, gameType: "caro", creator: "0x9A4...77E1", bet: 2, turnSeconds: 15 },
+      { id: 104, gameType: "oanquan", creator: "0x5D2...40C9", bet: 3, turnSeconds: 30 }
+    ];
+
+    // =========================================================================
+    // KẾT NỐI VÍ CORE MAINNET
+    // =========================================================================
+    async function connectWallet() {
+      if (!window.ethereum) {
+        userAddress = "0xDemo...8888";
+        document.getElementById("connectWalletBtn").textContent = userAddress;
+        document.getElementById("walletBadge").classList.remove("hidden");
+        document.getElementById("walletBalance").textContent = "125.00 CORE (Demo)";
+        showToast("Chưa cài MetaMask/OKX — Đã bật ví Demo để test!", "info");
+        return;
+      }
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.send("eth_requestAccounts", []);
+        userAddress = accounts[0];
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: CORE_CHAIN_ID_HEX }]
+          });
+        } catch (e) {}
+        const bal = await provider.getBalance(userAddress);
+        const formattedBal = Number(ethers.formatEther(bal)).toFixed(2);
+        const shortAddr = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+        document.getElementById("connectWalletBtn").textContent = shortAddr;
+        document.getElementById("walletBadge").classList.remove("hidden");
+        document.getElementById("walletBalance").textContent = `${formattedBal} CORE`;
+        showToast(`Đã kết nối ví ${shortAddr} trên mạng Core!`, "success");
+      } catch (err) {
+        showToast("Không thể kết nối ví: " + (err.message || "Lỗi"), "error");
+      }
+    }
+
+    // =========================================================================
+    // CHUYỂN ĐỔI GIỮA 4 MÔN CỜ
+    // =========================================================================
+    function switchGameType(type) {
+      if (isMatchActive) {
+        showToast("Vui lòng hoàn thành hoặc hủy ván hiện tại trước khi đổi môn cờ!", "error");
+        return;
+      }
+      currentGameType = type;
+
+      ["xiangqi", "chess", "caro", "oanquan"].forEach((t) => {
+        const btn = document.getElementById(`gameTab_${t}`);
+        if (t === type) {
+          btn.className = "py-2 px-1.5 rounded-lg text-xs sm:text-sm font-extrabold bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow transition-all duration-200 active:scale-95";
+        } else {
+          btn.className = "py-2 px-1.5 rounded-lg text-xs sm:text-sm font-bold text-stone-300 hover:bg-stone-800 transition-all duration-200 active:scale-95";
+        }
+      });
+
+      const wrapper = document.getElementById("boardWrapper");
+      const container = document.getElementById("boardContainer");
+      const xSvg = document.getElementById("xiangqiSvg");
+      const xPieces = document.getElementById("piecesLayer");
+      const cLayer = document.getElementById("chessBoardLayer");
+      const caroLayer = document.getElementById("caroBoardLayer");
+      const oaqLayer = document.getElementById("oanquanBoardLayer");
+
+      xSvg.classList.add("hidden");
+      xPieces.classList.add("hidden");
+      cLayer.classList.add("hidden");
+      caroLayer.classList.add("hidden");
+      oaqLayer.classList.add("hidden");
+
+      if (type === "xiangqi") {
+        wrapper.className = "w-full aspect-[9/10] board-wood rounded-2xl p-2 sm:p-3 relative select-none transition-all duration-200";
+        xSvg.classList.remove("hidden");
+        xPieces.classList.remove("hidden");
+      } else if (type === "chess") {
+        wrapper.className = "w-full aspect-square bg-stone-900 border-4 border-amber-800 rounded-2xl p-2 relative select-none shadow-2xl transition-all duration-200";
+        cLayer.classList.remove("hidden");
+      } else if (type === "caro") {
+        wrapper.className = "w-full aspect-square bg-amber-950 border-4 border-amber-700 rounded-2xl p-2 relative select-none shadow-2xl transition-all duration-200";
+        caroLayer.classList.remove("hidden");
+      } else if (type === "oanquan") {
+        wrapper.className = "w-full aspect-[4/3] board-wood rounded-2xl p-3 relative select-none transition-all duration-200";
+        oaqLayer.classList.remove("hidden");
+      }
+
+      container.classList.remove("board-smooth-enter");
+      void container.offsetWidth;
+      container.classList.add("board-smooth-enter");
+
+      const meta = GAME_META[type];
+      document.getElementById("headerEmblem").textContent = meta.emblem;
+      document.getElementById("activeGameLabel").textContent = meta.name;
+      document.getElementById("playerName").textContent = meta.p1;
+      document.getElementById("opponentName").textContent = meta.p2;
+      document.getElementById("turnHint").textContent = meta.hint;
+
+      initCurrentGameBoard();
+      renderRoomList();
+    }
+
+    function switchGameMode(mode) {
+      if (isMatchActive) {
+        showToast("Đang trong ván đấu, hãy kết thúc hoặc hủy ván trước khi đổi chế độ!", "error");
+        return;
+      }
+      gameMode = mode;
+      const tabPvP = document.getElementById("tabPvP");
+      const tabAI = document.getElementById("tabAI");
+      const aiPanel = document.getElementById("aiSetupPanel");
+      const pvpPanel = document.getElementById("pvpLobbyPanel");
+
+      if (mode === "pvp") {
+        tabPvP.className = "py-2 px-3 rounded-lg text-xs sm:text-sm font-bold bg-amber-500 text-stone-950 shadow transition";
+        tabAI.className = "py-2 px-3 rounded-lg text-xs sm:text-sm font-bold text-stone-300 hover:text-white transition";
+        aiPanel.classList.add("hidden");
+        pvpPanel.classList.remove("hidden");
+      } else {
+        tabAI.className = "py-2 px-3 rounded-lg text-xs sm:text-sm font-bold bg-emerald-500 text-stone-950 shadow transition";
+        tabPvP.className = "py-2 px-3 rounded-lg text-xs sm:text-sm font-bold text-stone-300 hover:text-white transition";
+        aiPanel.classList.remove("hidden");
+        pvpPanel.classList.add("hidden");
+      }
+    }
+
+    function setQuickBet(val) {
+      document.getElementById("betAmountInput").value = val;
+    }
+
+    // =========================================================================
+    // SẢNH PHÒNG PVP & CƯỢC CORE
+    // =========================================================================
+    function renderRoomList() {
+      const container = document.getElementById("openRoomsList");
+      const filtered = openRooms.filter((r) => r.gameType === currentGameType);
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<p class="text-xs text-stone-500 text-center py-4">Chưa có phòng ${GAME_META[currentGameType].name} nào đang mở. Hãy tạo phòng mới!</p>`;
+        return;
+      }
+      container.innerHTML = filtered.map((r) => `
+        <div class="bg-stone-950 border border-stone-800 hover:border-amber-600/50 rounded-xl p-2.5 flex items-center justify-between gap-2 transition">
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-extrabold text-amber-300">Phòng #${r.id}</span>
+              <span class="text-[11px] text-stone-400">bởi ${r.creator}</span>
+            </div>
+            <p class="text-xs text-stone-200 mt-0.5">
+              Cược: <strong class="text-emerald-400">${r.bet} CORE</strong> • <span class="text-amber-200">${r.turnSeconds}s/nước</span>
+            </p>
+          </div>
+          <button onclick="joinOpenRoom(${r.id})"
+            class="px-3 py-1.5 rounded-lg text-xs font-extrabold bg-emerald-500 hover:bg-emerald-400 text-stone-950 transition shrink-0">
+            Vào Đánh
+          </button>
+        </div>
+      `).join("");
+    }
+
+    function createPvPRoom() {
+      const bet = parseFloat(document.getElementById("betAmountInput").value);
+      const secs = parseInt(document.getElementById("turnSecondsInput").value, 10);
+      if (isNaN(bet) || bet < 0.1) {
+        showToast("Mức cược tối thiểu là 0.1 CORE!", "error");
+        return;
+      }
+      const roomId = Math.floor(105 + Math.random() * 890);
+      activeRoom = {
+        id: roomId,
+        gameType: currentGameType,
+        creator: userAddress ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` : "Bạn",
+        bet,
+        turnSeconds: secs
+      };
+
+      document.getElementById("pvpLobbyPanel").classList.add("hidden");
+      document.getElementById("activeMatchCard").classList.remove("hidden");
+      document.getElementById("matchRoomBadge").textContent = `Phòng #${roomId} • ${GAME_META[currentGameType].name}`;
+      document.getElementById("matchPotInfo").textContent = `Cược: ${bet} CORE (${secs}s/nước)`;
+      document.getElementById("matchStatusTag").textContent = "Đang chờ đối thủ...";
+      document.getElementById("closeWaitingRoomBtn").classList.remove("hidden");
+      document.getElementById("cancelWithPenaltyBtn").classList.add("hidden");
+
+      appendChat("Hệ thống", `Đã tạo Phòng #${roomId} (${GAME_META[currentGameType].name}) mức cược ${bet} CORE (${secs}s/nước). Đang chờ đối thủ...`, true);
+      showToast(`Đã tạo Phòng #${roomId}! Đang chờ kỳ thủ vào khớp kèo...`, "success");
+
+      setTimeout(() => {
+        if (!activeRoom || isMatchActive) return;
+        const mockOpponent = "0x8B2...49F0";
+        startMatch({
+          roomId: activeRoom.id,
+          bet: activeRoom.bet,
+          turnSeconds: activeRoom.turnSeconds,
+          opponentLabel: `Kỳ thủ ${mockOpponent}`,
+          isAI: false
+        });
+        appendChat(mockOpponent, "Chào bạn! Mình đã khớp kèo, chúc ván đấu hay nhé!", false);
+      }, 3000);
+    }
+
+    function joinOpenRoom(roomId) {
+      const room = openRooms.find((r) => r.id === roomId);
+      if (!room) return;
+      openRooms = openRooms.filter((r) => r.id !== roomId);
+      renderRoomList();
+
+      activeRoom = room;
+      document.getElementById("pvpLobbyPanel").classList.add("hidden");
+      document.getElementById("activeMatchCard").classList.remove("hidden");
+
+      startMatch({
+        roomId: room.id,
+        bet: room.bet,
+        turnSeconds: room.turnSeconds,
+        opponentLabel: `Chủ phòng ${room.creator}`,
+        isAI: false
+      });
+      appendChat("Hệ thống", `Bạn đã vào Phòng #${room.id} (${GAME_META[currentGameType].name}) • Tổng quỹ ${room.bet * 2} CORE.`, true);
+    }
+
+    function closeMyOpenRoom() {
+      activeRoom = null;
+      isMatchActive = false;
+      document.getElementById("activeMatchCard").classList.add("hidden");
+      document.getElementById("pvpLobbyPanel").classList.remove("hidden");
+      showToast("Đã đóng phòng chờ và hoàn lại 100% tiền cược.", "info");
+    }
+
+    function startAIGame() {
+      const secs = parseInt(document.getElementById("aiTurnSeconds").value, 10);
+      const diff = document.getElementById("aiDifficulty").value;
+      activeRoom = { id: "AI", gameType: currentGameType, bet: 0, turnSeconds: secs };
+
+      document.getElementById("aiSetupPanel").classList.add("hidden");
+      document.getElementById("activeMatchCard").classList.remove("hidden");
+      document.getElementById("pvpPenaltyControls").classList.add("hidden");
+      document.getElementById("matchRoomBadge").textContent = `Đấu Máy (Cấp ${diff}) • ${GAME_META[currentGameType].name}`;
+      document.getElementById("matchPotInfo").textContent = `Chế độ luyện tập (${secs}s/nước)`;
+      document.getElementById("matchStatusTag").textContent = "Đang đấu với Máy";
+
+      startMatch({
+        roomId: "AI",
+        bet: 0,
+        turnSeconds: secs,
+        opponentLabel: `Máy AI (Cấp ${diff})`,
+        isAI: true
+      });
+      appendChat("Hệ thống", `Bắt đầu ván ${GAME_META[currentGameType].name} với Máy AI (Cấp ${diff}). Bạn đi trước!`, true);
+    }
+
+    function startMatch({ roomId, bet, turnSeconds, opponentLabel, isAI }) {
+      isMatchActive = true;
+      currentTurn = "red";
+      turnDuration = turnSeconds;
+      timeLeft = turnSeconds;
+
+      initCurrentGameBoard();
+
+      document.getElementById("opponentName").textContent = opponentLabel;
+      document.getElementById("opponentSub").textContent = isAI ? "Trí tuệ nhân tạo" : `Đã khóa ${bet} CORE`;
+      document.getElementById("matchRoomBadge").textContent = isAI
+        ? `Đấu Máy AI • ${GAME_META[currentGameType].name}`
+        : `Phòng #${roomId} • ${GAME_META[currentGameType].name}`;
+      document.getElementById("matchPotInfo").textContent = isAI
+        ? `Luyện tập miễn phí (${turnSeconds}s/nước)`
+        : `Tổng quỹ: ${bet * 2} CORE (${turnSeconds}s/nước)`;
+      document.getElementById("matchStatusTag").textContent = "Đang thi đấu";
+
+      if (!isAI) {
+        document.getElementById("pvpPenaltyControls").classList.remove("hidden");
+        document.getElementById("closeWaitingRoomBtn").classList.add("hidden");
+        document.getElementById("cancelWithPenaltyBtn").classList.remove("hidden");
+      }
+
+      startTurnTimer();
+      showToast("Trận đấu bắt đầu! Lượt của bạn đi trước.", "success");
+    }
+
+    // =========================================================================
+    // ĐỒNG HỒ ĐẾM NGƯỢC LIỀN BÀN CỜ
+    // =========================================================================
+    function startTurnTimer() {
+      clearInterval(timerInterval);
+      timeLeft = turnDuration;
+      updateTimerUI();
+
+      timerInterval = setInterval(() => {
+        if (!isMatchActive) {
+          clearInterval(timerInterval);
+          return;
+        }
+        timeLeft--;
+        updateTimerUI();
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          if (currentTurn === "red") {
+            endMatch(false, "Bạn đã hết thời gian suy nghĩ và chưa bấm 'Đã Đánh Xong Nước'!");
+          } else {
+            endMatch(true, "Đối thủ đã hết giờ! Bạn giành chiến thắng.");
+          }
+        }
+      }, 1000);
+    }
+
+    function updateTimerUI() {
+      const formatted = `00:${String(Math.max(0, timeLeft)).padStart(2, "0")}`;
+      const redBox = document.getElementById("redTimerBox");
+      const blackBox = document.getElementById("blackTimerBox");
+      const redBar = document.getElementById("redTimerBar");
+      const blackBar = document.getElementById("blackTimerBar");
+      const pct = turnDuration > 0 ? Math.max(0, Math.min(100, (timeLeft / turnDuration) * 100)) : 100;
+
+      if (currentTurn === "red") {
+        redBox.textContent = formatted;
+        redBox.className = `px-2.5 py-0.5 rounded-xl bg-stone-950 border font-mono font-extrabold text-sm shrink-0 ${timeLeft <= 7 ? "border-rose-500 text-rose-400 animate-pulse" : "border-amber-500 text-amber-400"}`;
+        redBar.style.width = `${pct}%`;
+        redBar.className = `h-full transition-all duration-500 ${timeLeft <= 7 ? "bg-rose-500" : "bg-amber-400"}`;
+
+        blackBox.textContent = "--:--";
+        blackBox.className = "px-2.5 py-0.5 rounded-xl bg-stone-950 border border-stone-800 font-mono font-bold text-sm text-stone-500 shrink-0";
+        blackBar.style.width = "0%";
+      } else {
+        blackBox.textContent = formatted;
+        blackBox.className = `px-2.5 py-0.5 rounded-xl bg-stone-950 border font-mono font-extrabold text-sm shrink-0 ${timeLeft <= 7 ? "border-rose-500 text-rose-400 animate-pulse" : "border-sky-500 text-sky-400"}`;
+        blackBar.style.width = `${pct}%`;
+        blackBar.className = `h-full transition-all duration-500 ${timeLeft <= 7 ? "bg-rose-500" : "bg-sky-400"}`;
+
+        redBox.textContent = "--:--";
+        redBox.className = "px-2.5 py-0.5 rounded-xl bg-stone-950 border border-stone-800 font-mono font-bold text-sm text-stone-500 shrink-0";
+        redBar.style.width = "0%";
+      }
+    }
+
+    // =========================================================================
+    // HỦY VÁN CHỊU PHẠT 20%
+    // =========================================================================
+    function openCancelPenaltyModal() {
+      if (!activeRoom || activeRoom.bet <= 0) return;
+      const bet = activeRoom.bet;
+      const penalty = +(bet * (PENALTY_PERCENT / 100)).toFixed(4);
+      const refund = +(bet - penalty).toFixed(4);
+
+      document.getElementById("modalOriginalBet").textContent = `${bet} CORE`;
+      document.getElementById("modalPenaltyFee").textContent = `- ${penalty} CORE`;
+      document.getElementById("modalRefundAmount").textContent = `${refund} CORE`;
+      document.getElementById("cancelPenaltyModal").classList.remove("hidden");
+    }
+
+    function closeCancelPenaltyModal() {
+      document.getElementById("cancelPenaltyModal").classList.add("hidden");
+    }
+
+    function confirmCancelWithPenalty() {
+      closeCancelPenaltyModal();
+      clearInterval(timerInterval);
+      isMatchActive = false;
+
+      const bet = activeRoom ? activeRoom.bet : 0;
+      const penalty = +(bet * (PENALTY_PERCENT / 100)).toFixed(4);
+      const refund = +(bet - penalty).toFixed(4);
+
+      appendChat("Hệ thống", `Bạn đã xin hủy ván. Hoàn lại ${refund} CORE (phạt ${penalty} CORE bồi thường cho đối thủ).`, true);
+
+      document.getElementById("resultIcon").textContent = "🏳️";
+      document.getElementById("resultTitle").textContent = "Đã Hủy Ván (Chịu Phạt 20%)";
+      document.getElementById("resultDesc").textContent = `Hợp đồng đã hoàn lại ${refund} CORE về ví bạn và chuyển ${penalty} CORE phí phạt bồi thường cho đối thủ.`;
+      document.getElementById("resultModal").classList.remove("hidden");
+    }
+
+    function endMatch(playerWon, reason) {
+      clearInterval(timerInterval);
+      isMatchActive = false;
+
+      const bet = activeRoom ? activeRoom.bet : 0;
+      const totalWin = bet * 2;
+
+      document.getElementById("resultIcon").textContent = playerWon ? "🏆" : "💔";
+      document.getElementById("resultTitle").textContent = playerWon ? "Bạn Đã Chiến Thắng!" : "Bạn Đã Thua Cuộc!";
+      document.getElementById("resultDesc").textContent = bet > 0
+        ? `${reason} ${playerWon ? `Bạn nhận trọn quỹ thưởng ${totalWin} CORE!` : `Đối thủ nhận ${totalWin} CORE.`}`
+        : reason;
+      document.getElementById("resultModal").classList.remove("hidden");
+    }
+
+    function resetToLobbyAfterMatch() {
+      document.getElementById("resultModal").classList.add("hidden");
+      document.getElementById("activeMatchCard").classList.add("hidden");
+      activeRoom = null;
+      draftMove = null;
+      updateDraftButtons();
+      initCurrentGameBoard();
+
+      if (gameMode === "pvp") {
+        document.getElementById("pvpLobbyPanel").classList.remove("hidden");
+      } else {
+        document.getElementById("aiSetupPanel").classList.remove("hidden");
+      }
+      document.getElementById("opponentName").textContent = GAME_META[currentGameType].p2;
+      document.getElementById("opponentSub").textContent = "Đang chờ vào bàn...";
+    }
+
+    // =========================================================================
+    // TRẠNG THÁI CHUNG CHO 4 BÀN CỜ & NÚT "ĐÃ ĐÁNH XONG NƯỚC"
+    // =========================================================================
+    let boardState = [];
+    let selectedCell = null;
+    let draftMove = null; // Lưu nước đi nháp của từng môn trước khi bấm "Đã Đánh Xong Nước"
+    let moveCount = 0;
+
+    // Riêng cho Ô Ăn Quan
+    let oaqCells = [];
+    let oaqScore = { red: 0, black: 0 };
+
+    function initCurrentGameBoard() {
+      selectedCell = null;
+      draftMove = null;
+      moveCount = 0;
+      updateDraftButtons();
+      document.getElementById("moveHistoryList").innerHTML = `<p class="text-stone-500 italic">Chưa có nước đi nào...</p>`;
+
+      if (currentGameType === "xiangqi") initXiangqiBoard();
+      else if (currentGameType === "chess") initChessBoard();
+      else if (currentGameType === "caro") initCaroBoard();
+      else if (currentGameType === "oanquan") initOAnQuanBoard();
+    }
+
+    function updateDraftButtons() {
+      const hasDraft = Boolean(draftMove);
+      document.getElementById("confirmMoveBtn").disabled = !hasDraft;
+      document.getElementById("undoDraftBtn").disabled = !hasDraft;
+    }
+
+    function undoDraftMove() {
+      if (!draftMove) return;
+      if (currentGameType === "xiangqi" || currentGameType === "chess") {
+        const { fromR, fromC, toR, toC, movedPiece, capturedPiece } = draftMove;
+        boardState[fromR][fromC] = movedPiece;
+        boardState[toR][toC] = capturedPiece;
+      } else if (currentGameType === "caro") {
+        boardState[draftMove.r][draftMove.c] = null;
+      } else if (currentGameType === "oanquan") {
+        oaqCells = [...draftMove.prevCells];
+        oaqScore = { ...draftMove.prevScore };
+      }
+
+      draftMove = null;
+      selectedCell = null;
+      updateDraftButtons();
+      document.getElementById("turnHint").textContent = "Đã hoàn tác — Hãy chọn nước đi khác";
+      renderCurrentGameBoard();
+    }
+
+    function confirmPlayerMove() {
+      if (!draftMove) return;
+      moveCount++;
+      logMoveHistory(`#${moveCount} Bạn: ${draftMove.label}`);
+
+      const won = draftMove.isWinningMove;
+      draftMove = null;
+      selectedCell = null;
+      updateDraftButtons();
+      renderCurrentGameBoard();
+
+      if (won) {
+        endMatch(true, `Bạn đã giành chiến thắng trong ván ${GAME_META[currentGameType].name}!`);
+        return;
+      }
+
+      if (!isMatchActive) {
+        isMatchActive = true;
+        activeRoom = { id: "DEMO", gameType: currentGameType, bet: 0, turnSeconds: 30 };
+        turnDuration = 30;
+      }
+
+      currentTurn = "black";
+      document.getElementById("turnHint").textContent = "Đang chờ đối thủ đánh...";
+      startTurnTimer();
+
+      setTimeout(() => {
+        if (!isMatchActive || currentTurn !== "black") return;
+        performOpponentMove();
+      }, 1100);
+    }
+
+    function performOpponentMove() {
+      let result = null;
+      if (currentGameType === "xiangqi") result = makeOpponentXiangqiMove();
+      else if (currentGameType === "chess") result = makeOpponentChessMove();
+      else if (currentGameType === "caro") result = makeOpponentCaroMove();
+      else if (currentGameType === "oanquan") result = makeOpponentOAnQuanMove();
+
+      renderCurrentGameBoard();
+
+      if (!result) {
+        endMatch(true, "Đối thủ hết nước đi! Bạn thắng!");
+        return;
+      }
+
+      moveCount++;
+      logMoveHistory(`#${moveCount} Đối thủ: ${result.label}`);
+
+      if (result.isWinningMove) {
+        endMatch(false, `Đối thủ đã chiến thắng ván ${GAME_META[currentGameType].name}!`);
+        return;
+      }
+
+      currentTurn = "red";
+      document.getElementById("turnHint").textContent = GAME_META[currentGameType].hint;
+      startTurnTimer();
+    }
+
+    function renderCurrentGameBoard() {
+      if (currentGameType === "xiangqi") renderXiangqiBoard();
+      else if (currentGameType === "chess") renderChessBoard();
+      else if (currentGameType === "caro") renderCaroBoard();
+      else if (currentGameType === "oanquan") renderOAnQuanBoard();
+    }
+
+    // =========================================================================
+    // ENGINE 1: CỜ TƯỚNG (10x9)
+    // =========================================================================
+    const XIANGQI_LABELS = {
+      r_k: "帥", r_a: "仕", r_e: "相", r_h: "傌", r_r: "俥", r_c: "炮", r_p: "兵",
+      b_k: "將", b_a: "士", b_e: "象", b_h: "馬", b_r: "車", b_c: "砲", b_p: "卒"
+    };
+
+    function initXiangqiBoard() {
+      boardState = Array.from({ length: 10 }, () => Array(9).fill(null));
+      const setup = [
+        [0,0,"b_r"],[0,1,"b_h"],[0,2,"b_e"],[0,3,"b_a"],[0,4,"b_k"],[0,5,"b_a"],[0,6,"b_e"],[0,7,"b_h"],[0,8,"b_r"],
+        [2,1,"b_c"],[2,7,"b_c"],
+        [3,0,"b_p"],[3,2,"b_p"],[3,4,"b_p"],[3,6,"b_p"],[3,8,"b_p"],
+        [9,0,"r_r"],[9,1,"r_h"],[9,2,"r_e"],[9,3,"r_a"],[9,4,"r_k"],[9,5,"r_a"],[9,6,"r_e"],[9,7,"r_h"],[9,8,"r_r"],
+        [7,1,"r_c"],[7,7,"r_c"],
+        [6,0,"r_p"],[6,2,"r_p"],[6,4,"r_p"],[6,6,"r_p"],[6,8,"r_p"]
+      ];
+      setup.forEach(([r, c, p]) => { boardState[r][c] = p; });
+      renderXiangqiBoard();
+    }
+
+    function renderXiangqiBoard() {
+      const layer = document.getElementById("piecesLayer");
+      layer.innerHTML = "";
+      for (let r = 0; r < 10; r++) {
+        for (let c = 0; c < 9; c++) {
+          const piece = boardState[r][c];
+          const leftPct = ((c + 0.5) / 9) * 100;
+          const topPct = ((r + 0.5) / 10) * 100;
+
+          const cellBtn = document.createElement("button");
+          cellBtn.type = "button";
+          cellBtn.style.left = `${leftPct}%`;
+          cellBtn.style.top = `${topPct}%`;
+          cellBtn.style.width = "10.6%";
+          cellBtn.style.height = "9.6%";
+          cellBtn.className = "absolute -translate-x-1/2 -translate-y-1/2 rounded-full flex items-center justify-center focus:outline-none";
+          cellBtn.onclick = () => onXiangqiCellClick(r, c);
+
+          if (piece) {
+            const isRed = piece.startsWith("r_");
+            const isSelected = selectedCell && selectedCell.r === r && selectedCell.c === c;
+            const isDraftDest = draftMove && draftMove.toR === r && draftMove.toC === c;
+            cellBtn.innerHTML = `
+              <div class="piece-token w-full h-full rounded-full flex items-center justify-center hanzi font-black text-sm sm:text-lg md:text-xl border-2
+                ${isRed ? "bg-[#fdf3e7] text-[#b91c1c] border-[#b91c1c]" : "bg-[#f4f1ea] text-[#1c1917] border-[#292524]"}
+                ${isSelected ? "piece-selected" : ""}
+                ${isDraftDest ? "piece-draft" : ""}">
+                ${XIANGQI_LABELS[piece]}
+              </div>
+            `;
+          } else if (selectedCell && isValidXiangqiMove(selectedCell.r, selectedCell.c, r, c)) {
+            cellBtn.innerHTML = `<span class="w-3 h-3 rounded-full bg-emerald-500/80 ring-2 ring-white shadow"></span>`;
+          }
+          layer.appendChild(cellBtn);
+        }
+      }
+    }
+
+    function onXiangqiCellClick(r, c) {
+      if (currentTurn !== "red") return;
+      if (draftMove) {
+        showToast("Bạn đã đi nháp. Bấm '✅ Đã Đánh Xong Nước' hoặc '↩ Chọn Lại'.", "info");
+        return;
+      }
+      const clickedPiece = boardState[r][c];
+      if (clickedPiece && clickedPiece.startsWith("r_")) {
+        selectedCell = { r, c };
+        renderXiangqiBoard();
+        return;
+      }
+      if (selectedCell) {
+        if (!isValidXiangqiMove(selectedCell.r, selectedCell.c, r, c)) {
+          showToast("Nước đi không hợp lệ theo luật Cờ Tướng!", "error");
+          return;
+        }
+        const movedPiece = boardState[selectedCell.r][selectedCell.c];
+        const capturedPiece = boardState[r][c];
+        draftMove = {
+          fromR: selectedCell.r, fromC: selectedCell.c, toR: r, toC: c,
+          movedPiece, capturedPiece,
+          label: `${XIANGQI_LABELS[movedPiece]} (${selectedCell.r},${selectedCell.c})→(${r},${c})`,
+          isWinningMove: capturedPiece === "b_k"
+        };
+        boardState[r][c] = movedPiece;
+        boardState[selectedCell.r][selectedCell.c] = null;
+        selectedCell = null;
+        updateDraftButtons();
+        document.getElementById("turnHint").textContent = "Đã đặt quân — Bấm '✅ Đã Đánh Xong Nước'";
+        renderXiangqiBoard();
+      }
+    }
+
+    function countXiangqiBetween(r1, c1, r2, c2) {
+      let count = 0;
+      if (r1 === r2) {
+        for (let c = Math.min(c1, c2) + 1; c < Math.max(c1, c2); c++) if (boardState[r1][c]) count++;
+      } else if (c1 === c2) {
+        for (let r = Math.min(r1, r2) + 1; r < Math.max(r1, r2); r++) if (boardState[r][c1]) count++;
+      }
+      return count;
+    }
+
+    function isValidXiangqiMove(r1, c1, r2, c2) {
+      if (r1 === r2 && c1 === c2) return false;
+      const p = boardState[r1][c1];
+      const target = boardState[r2][c2];
+      if (!p) return false;
+      if (target && p[0] === target[0]) return false;
+
+      const type = p.slice(2);
+      const isRed = p.startsWith("r_");
+      const dr = r2 - r1;
+      const dc = c2 - c1;
+      const adr = Math.abs(dr);
+      const adc = Math.abs(dc);
+
+      switch (type) {
+        case "r": return (r1 === r2 || c1 === c2) && countXiangqiBetween(r1, c1, r2, c2) === 0;
+        case "c":
+          if (r1 !== r2 && c1 !== c2) return false;
+          const cnt = countXiangqiBetween(r1, c1, r2, c2);
+          return target ? cnt === 1 : cnt === 0;
+        case "h":
+          if (!((adr === 2 && adc === 1) || (adr === 1 && adc === 2))) return false;
+          const legR = adr === 2 ? r1 + dr / 2 : r1;
+          const legC = adc === 2 ? c1 + dc / 2 : c1;
+          return !boardState[legR][legC];
+        case "e":
+          if (adr !== 2 || adc !== 2) return false;
+          if (isRed && r2 < 5) return false;
+          if (!isRed && r2 > 4) return false;
+          return !boardState[r1 + dr / 2][c1 + dc / 2];
+        case "a":
+          if (adr !== 1 || adc !== 1 || c2 < 3 || c2 > 5) return false;
+          return isRed ? r2 >= 7 : r2 <= 2;
+        case "k":
+          if (adr + adc !== 1 || c2 < 3 || c2 > 5) return false;
+          return isRed ? r2 >= 7 : r2 <= 2;
+        case "p":
+          if (isRed) {
+            if (r1 >= 5) return dr === -1 && dc === 0;
+            return (dr === -1 && dc === 0) || (dr === 0 && adc === 1);
+          } else {
+            if (r1 <= 4) return dr === 1 && dc === 0;
+            return (dr === 1 && dc === 0) || (dr === 0 && adc === 1);
+          }
+      }
+      return false;
+    }
+
+    function makeOpponentXiangqiMove() {
+      const moves = [];
+      for (let r = 0; r < 10; r++) {
+        for (let c = 0; c < 9; c++) {
+          if (boardState[r][c] && boardState[r][c].startsWith("b_")) {
+            for (let tr = 0; tr < 10; tr++) {
+              for (let tc = 0; tc < 9; tc++) {
+                if (isValidXiangqiMove(r, c, tr, tc)) {
+                  const target = boardState[tr][tc];
+                  let score = target ? (target === "r_k" ? 1000 : 25) : Math.random() * 5;
+                  if (tr > r) score += 2;
+                  moves.push({ r, c, tr, tc, score });
+                }
+              }
+            }
+          }
+        }
+      }
+      if (moves.length === 0) return null;
+      moves.sort((a, b) => b.score - a.score);
+      const chosen = moves[0];
+      const moved = boardState[chosen.r][chosen.c];
+      const captured = boardState[chosen.tr][chosen.tc];
+      boardState[chosen.tr][chosen.tc] = moved;
+      boardState[chosen.r][chosen.c] = null;
+      return {
+        label: `${XIANGQI_LABELS[moved]} (${chosen.r},${chosen.c})→(${chosen.tr},${chosen.tc})`,
+        isWinningMove: captured === "r_k"
+      };
+    }
+
+    // =========================================================================
+    // ENGINE 2: CỜ VUA (8x8)
+    // =========================================================================
+    const CHESS_SYMBOLS = {
+      wK: "♔", wQ: "♕", wR: "♖", wB: "♗", wN: "♘", wP: "♙",
+      bK: "♚", bQ: "♛", bR: "♜", bB: "♝", bN: "♞", bP: "♟"
+    };
+
+    function initChessBoard() {
+      boardState = [
+        ["bR","bN","bB","bQ","bK","bB","bN","bR"],
+        ["bP","bP","bP","bP","bP","bP","bP","bP"],
+        [null,null,null,null,null,null,null,null],
+        [null,null,null,null,null,null,null,null],
+        [null,null,null,null,null,null,null,null],
+        [null,null,null,null,null,null,null,null],
+        ["wP","wP","wP","wP","wP","wP","wP","wP"],
+        ["wR","wN","wB","wQ","wK","wB","wN","wR"]
+      ];
+      renderChessBoard();
+    }
+
+    function renderChessBoard() {
+      const layer = document.getElementById("chessBoardLayer");
+      layer.innerHTML = "";
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const piece = boardState[r][c];
+          const isLight = (r + c) % 2 === 0;
+          const isSelected = selectedCell && selectedCell.r === r && selectedCell.c === c;
+          const isDraft = draftMove && draftMove.toR === r && draftMove.toC === c;
+          const canMoveHere = selectedCell && isValidChessMove(selectedCell.r, selectedCell.c, r, c);
+
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = `flex items-center justify-center text-2xl sm:text-3xl font-bold relative transition
+            ${isLight ? "bg-[#edd6b0]" : "bg-[#b88762]"}
+            ${isSelected ? "ring-4 ring-inset ring-yellow-400" : ""}
+            ${isDraft ? "ring-4 ring-inset ring-sky-400" : ""}`;
+          btn.onclick = () => onChessCellClick(r, c);
+
+          if (piece) {
+            const isWhite = piece.startsWith("w");
+            btn.innerHTML = `<span class="${isWhite ? "text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.9)]" : "text-stone-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.4)]"}">${CHESS_SYMBOLS[piece]}</span>`;
+          } else if (canMoveHere) {
+            btn.innerHTML = `<span class="w-3.5 h-3.5 rounded-full bg-emerald-600/80"></span>`;
+          }
+          layer.appendChild(btn);
+        }
+      }
+    }
+
+    function onChessCellClick(r, c) {
+      if (currentTurn !== "red") return;
+      if (draftMove) {
+        showToast("Bấm '✅ Đã Đánh Xong Nước' hoặc '↩ Chọn Lại'.", "info");
+        return;
+      }
+      const p = boardState[r][c];
+      if (p && p.startsWith("w")) {
+        selectedCell = { r, c };
+        renderChessBoard();
+        return;
+      }
+      if (selectedCell) {
+        if (!isValidChessMove(selectedCell.r, selectedCell.c, r, c)) {
+          showToast("Nước đi không hợp lệ theo luật Cờ Vua!", "error");
+          return;
+        }
+        let moved = boardState[selectedCell.r][selectedCell.c];
+        const captured = boardState[r][c];
+        if (moved === "wP" && r === 0) moved = "wQ";
+        draftMove = {
+          fromR: selectedCell.r, fromC: selectedCell.c, toR: r, toC: c,
+          movedPiece: boardState[selectedCell.r][selectedCell.c], capturedPiece: captured,
+          label: `${CHESS_SYMBOLS[moved]} (${selectedCell.r},${selectedCell.c})→(${r},${c})`,
+          isWinningMove: captured === "bK"
+        };
+        boardState[r][c] = moved;
+        boardState[selectedCell.r][selectedCell.c] = null;
+        selectedCell = null;
+        updateDraftButtons();
+        document.getElementById("turnHint").textContent = "Đã đặt quân — Bấm '✅ Đã Đánh Xong Nước'";
+        renderChessBoard();
+      }
+    }
+
+    function isChessPathClear(r1, c1, r2, c2) {
+      const stepR = Math.sign(r2 - r1);
+      const stepC = Math.sign(c2 - c1);
+      let r = r1 + stepR, c = c1 + stepC;
+      while (r !== r2 || c !== c2) {
+        if (boardState[r][c]) return false;
+        r += stepR;
+        c += stepC;
+      }
+      return true;
+    }
+
+    function isValidChessMove(r1, c1, r2, c2) {
+      if (r1 === r2 && c1 === c2) return false;
+      const p = boardState[r1][c1];
+      const target = boardState[r2][c2];
+      if (!p) return false;
+      if (target && p[0] === target[0]) return false;
+
+      const type = p[1];
+      const isWhite = p[0] === "w";
+      const dr = r2 - r1, dc = c2 - c1;
+      const adr = Math.abs(dr), adc = Math.abs(dc);
+
+      switch (type) {
+        case "R": return (r1 === r2 || c1 === c2) && isChessPathClear(r1, c1, r2, c2);
+        case "B": return (adr === adc) && isChessPathClear(r1, c1, r2, c2);
+        case "Q": return (r1 === r2 || c1 === c2 || adr === adc) && isChessPathClear(r1, c1, r2, c2);
+        case "N": return (adr === 2 && adc === 1) || (adr === 1 && adc === 2);
+        case "K": return adr <= 1 && adc <= 1;
+        case "P":
+          if (isWhite) {
+            if (dc === 0 && !target) {
+              if (dr === -1) return true;
+              if (r1 === 6 && dr === -2 && !boardState[5][c1]) return true;
+            }
+            if (adc === 1 && dr === -1 && target) return true;
+          } else {
+            if (dc === 0 && !target) {
+              if (dr === 1) return true;
+              if (r1 === 1 && dr === 2 && !boardState[2][c1]) return true;
+            }
+            if (adc === 1 && dr === 1 && target) return true;
+          }
+          return false;
+      }
+      return false;
+    }
+
+    function makeOpponentChessMove() {
+      const moves = [];
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          if (boardState[r][c] && boardState[r][c].startsWith("b")) {
+            for (let tr = 0; tr < 8; tr++) {
+              for (let tc = 0; tc < 8; tc++) {
+                if (isValidChessMove(r, c, tr, tc)) {
+                  const target = boardState[tr][tc];
+                  let score = target ? (target === "wK" ? 1000 : 25) : Math.random() * 5;
+                  if (tr > r) score += 2;
+                  moves.push({ r, c, tr, tc, score });
+                }
+              }
+            }
+          }
+        }
+      }
+      if (moves.length === 0) return null;
+      moves.sort((a, b) => b.score - a.score);
+      const m = moves[0];
+      let moved = boardState[m.r][m.c];
+      const captured = boardState[m.tr][m.tc];
+      if (moved === "bP" && m.tr === 7) moved = "bQ";
+      boardState[m.tr][m.tc] = moved;
+      boardState[m.r][m.c] = null;
+      return {
+        label: `${CHESS_SYMBOLS[moved]} (${m.r},${m.c})→(${m.tr},${m.tc})`,
+        isWinningMove: captured === "wK"
+      };
+    }
+
+    // =========================================================================
+    // ENGINE 3: CỜ CARO (12x12 — 5 Ô LIÊN TIẾP THẮNG)
+    // =========================================================================
+    function initCaroBoard() {
+      boardState = Array.from({ length: 12 }, () => Array(12).fill(null));
+      renderCaroBoard();
+    }
+
+    function renderCaroBoard() {
+      const layer = document.getElementById("caroBoardLayer");
+      layer.innerHTML = "";
+      for (let r = 0; r < 12; r++) {
+        for (let c = 0; c < 12; c++) {
+          const val = boardState[r][c];
+          const isDraft = draftMove && draftMove.r === r && draftMove.c === c;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = `border border-amber-900/25 flex items-center justify-center font-black text-base sm:text-lg hover:bg-amber-200/70 transition
+            ${isDraft ? "bg-sky-200 ring-2 ring-inset ring-sky-500" : ""}`;
+          btn.onclick = () => onCaroCellClick(r, c);
+          if (val === "X") btn.innerHTML = `<span class="text-red-600">✕</span>`;
+          else if (val === "O") btn.innerHTML = `<span class="text-sky-700">◯</span>`;
+          layer.appendChild(btn);
+        }
+      }
+    }
+
+    function onCaroCellClick(r, c) {
+      if (currentTurn !== "red") return;
+      if (boardState[r][c] && !(draftMove && draftMove.r === r && draftMove.c === c)) return;
+
+      if (draftMove) {
+        boardState[draftMove.r][draftMove.c] = null;
+      }
+      boardState[r][c] = "X";
+      draftMove = {
+        r, c,
+        label: `Đánh X tại (${r + 1}, ${c + 1})`,
+        isWinningMove: checkCaroWin(r, c, "X")
+      };
+      updateDraftButtons();
+      document.getElementById("turnHint").textContent = "Đã đặt X — Bấm '✅ Đã Đánh Xong Nước'";
+      renderCaroBoard();
+    }
+
+    function checkCaroWin(r, c, mark) {
+      const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+      for (const [dr, dc] of dirs) {
+        let count = 1;
+        for (let step = 1; step < 5; step++) {
+          const nr = r + dr * step, nc = c + dc * step;
+          if (nr >= 0 && nr < 12 && nc >= 0 && nc < 12 && boardState[nr][nc] === mark) count++;
+          else break;
+        }
+        for (let step = 1; step < 5; step++) {
+          const nr = r - dr * step, nc = c - dc * step;
+          if (nr >= 0 && nr < 12 && nc >= 0 && nc < 12 && boardState[nr][nc] === mark) count++;
+          else break;
+        }
+        if (count >= 5) return true;
+      }
+      return false;
+    }
+
+    function makeOpponentCaroMove() {
+      let best = null, bestScore = -1;
+      for (let r = 0; r < 12; r++) {
+        for (let c = 0; c < 12; c++) {
+          if (!boardState[r][c]) {
+            let score = Math.random() * 2;
+            for (let dr = -1; dr <= 1; dr++) {
+              for (let dc = -1; dc <= 1; dc++) {
+                const nr = r + dr, nc = c + dc;
+                if (nr >= 0 && nr < 12 && nc >= 0 && nc < 12) {
+                  if (boardState[nr][nc] === "X") score += 4;
+                  if (boardState[nr][nc] === "O") score += 5;
+                }
+              }
+            }
+            if (score > bestScore) {
+              bestScore = score;
+              best = { r, c };
+            }
+          }
+        }
+      }
+      if (!best) return null;
+      boardState[best.r][best.c] = "O";
+      return {
+        label: `Đánh O tại (${best.r + 1}, ${best.c + 1})`,
+        isWinningMove: checkCaroWin(best.r, best.c, "O")
+      };
+    }
+
+    // =========================================================================
+    // ENGINE 4: Ô ĂN QUAN DÂN GIAN
+    // =========================================================================
+    function initOAnQuanBoard() {
+      oaqCells = [10, 5, 5, 5, 5, 5, 10, 5, 5, 5, 5, 5];
+      oaqScore = { red: 0, black: 0 };
+      renderOAnQuanBoard();
+    }
+
+    function renderOAnQuanBoard() {
+      const layer = document.getElementById("oanquanBoardLayer");
+      layer.innerHTML = `
+        <div class="flex justify-between items-center bg-stone-950/85 text-amber-200 px-3 py-1.5 rounded-xl text-xs font-bold">
+          <span>Đối thủ: <strong class="text-sky-400">${oaqScore.black} điểm</strong></span>
+          <span class="text-stone-400">2 Quan: ${oaqCells[0] + oaqCells[6]} quân</span>
+          <span>Bạn: <strong class="text-emerald-400">${oaqScore.red} điểm</strong></span>
+        </div>
+
+        <div class="grid grid-cols-7 gap-1.5 items-stretch flex-1">
+          <div class="row-span-2 rounded-l-full bg-amber-950/85 border-2 border-amber-700 flex flex-col items-center justify-center p-1 text-center">
+            <span class="text-[10px] font-bold text-amber-300">QUAN</span>
+            <span class="text-lg font-black text-white">${oaqCells[0]}</span>
+          </div>
+
+          ${[11, 10, 9, 8, 7].map((idx) => `
+            <div class="rounded-xl bg-amber-900/40 border border-amber-800/70 flex flex-col items-center justify-center p-1">
+              <span class="text-[10px] text-stone-800 font-bold">Ô ${12 - idx}</span>
+              <span class="text-base sm:text-lg font-black text-stone-950">${oaqCells[idx]}</span>
+            </div>
+          `).join("")}
+
+          <div class="row-span-2 rounded-r-full bg-amber-950/85 border-2 border-amber-700 flex flex-col items-center justify-center p-1 text-center">
+            <span class="text-[10px] font-bold text-amber-300">QUAN</span>
+            <span class="text-lg font-black text-white">${oaqCells[6]}</span>
+          </div>
+
+          ${[1, 2, 3, 4, 5].map((idx) => `
+            <button type="button" onclick="onOAnQuanCellClick(${idx})"
+              class="rounded-xl bg-amber-200/80 hover:bg-amber-100 border-2 border-amber-800 flex flex-col items-center justify-center p-1 transition active:scale-95">
+              <span class="text-[10px] text-amber-900 font-bold">Ô ${idx}</span>
+              <span class="text-base sm:text-lg font-black text-red-700">${oaqCells[idx]}</span>
+            </button>
+          `).join("")}
+        </div>
+        <p class="text-[11px] text-center text-stone-900 font-semibold">Chạm vào 1 ô hàng dưới (1–5) để rải quân sang phải</p>
+      `;
+    }
+
+    function sowOAnQuan(startIdx, side) {
+      let hand = oaqCells[startIdx];
+      oaqCells[startIdx] = 0;
+      let idx = startIdx;
+
+      while (hand > 0) {
+        idx = (idx + 1) % 12;
+        oaqCells[idx]++;
+        hand--;
+        if (hand === 0) {
+          const next = (idx + 1) % 12;
+          if (next !== 0 && next !== 6 && oaqCells[next] > 0) {
+            hand = oaqCells[next];
+            oaqCells[next] = 0;
+            idx = next;
+          } else if (oaqCells[next] === 0) {
+            const afterEmpty = (next + 1) % 12;
+            if (oaqCells[afterEmpty] > 0) {
+              oaqScore[side] += oaqCells[afterEmpty];
+              oaqCells[afterEmpty] = 0;
+            }
+          }
+        }
+      }
+    }
+
+    function onOAnQuanCellClick(idx) {
+      if (currentTurn !== "red") return;
+      if (draftMove) {
+        showToast("Bấm '✅ Đã Đánh Xong Nước' hoặc '↩ Chọn Lại'.", "info");
+        return;
+      }
+      if (oaqCells[idx] === 0) {
+        showToast("Ô này đang trống, hãy chọn ô có quân!", "error");
+        return;
+      }
+
+      const prevCells = [...oaqCells];
+      const prevScore = { ...oaqScore };
+      sowOAnQuan(idx, "red");
+
+      const gameEnded = oaqCells[0] === 0 && oaqCells[6] === 0;
+      draftMove = {
+        prevCells, prevScore,
+        label: `Rải quân từ Ô ${idx} (Điểm: ${oaqScore.red})`,
+        isWinningMove: gameEnded && oaqScore.red >= oaqScore.black
+      };
+      updateDraftButtons();
+      document.getElementById("turnHint").textContent = "Đã rải quân — Bấm '✅ Đã Đánh Xong Nước'";
+      renderOAnQuanBoard();
+    }
+
+    function makeOpponentOAnQuanMove() {
+      const candidates = [7, 8, 9, 10, 11].filter((i) => oaqCells[i] > 0);
+      if (candidates.length === 0) return null;
+      const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+      sowOAnQuan(chosen, "black");
+      const gameEnded = oaqCells[0] === 0 && oaqCells[6] === 0;
+      return {
+        label: `Đối thủ rải quân từ Ô ${12 - chosen} (Điểm: ${oaqScore.black})`,
+        isWinningMove: gameEnded && oaqScore.black > oaqScore.red
+      };
+    }
+
+    // =========================================================================
+    // KHUNG CHAT TRỰC TIẾP & THÔNG BÁO TOAST
+    // =========================================================================
+    function handleChatSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById("chatInput");
+      const text = input.value.trim();
+      if (!text) return;
+      appendChat("Bạn", text, false, true);
+      input.value = "";
+
+      if (isMatchActive) {
+        setTimeout(() => {
+          const replies = ["Ok bạn!", "Nước này căng đấy 😄", "Đợi mình tính chút nhé!", "Chơi ván này hay quá!"];
+          const reply = replies[Math.floor(Math.random() * replies.length)];
+          appendChat(gameMode === "ai" ? "Máy AI" : "Đối thủ", reply, false, false);
+        }, 1200);
+      }
+    }
+
+    function sendQuickChat(msg) {
+      appendChat("Bạn", msg, false, true);
+    }
+
+    function appendChat(sender, text, isSystem = false, isSelf = false) {
+      const box = document.getElementById("chatMessages");
+      const div = document.createElement("div");
+      if (isSystem) {
+        div.className = "bg-amber-500/10 border border-amber-500/30 rounded-xl px-2.5 py-1.5 text-amber-200 text-[11px]";
+        div.innerHTML = `<strong>[Hệ thống]:</strong> ${escapeHtml(text)}`;
+      } else {
+        div.className = `rounded-xl px-2.5 py-1.5 ${isSelf ? "bg-amber-600/25 border border-amber-500/40 ml-4 text-amber-50" : "bg-stone-800/90 border border-stone-700 mr-4 text-stone-100"}`;
+        div.innerHTML = `<span class="font-bold ${isSelf ? "text-amber-300" : "text-sky-300"}">${escapeHtml(sender)}:</span> ${escapeHtml(text)}`;
+      }
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function logMoveHistory(text) {
+      const list = document.getElementById("moveHistoryList");
+      if (moveCount === 1) list.innerHTML = "";
+      const p = document.createElement("p");
+      p.textContent = text;
+      list.prepend(p);
+    }
+
+    function showToast(msg, type = "info") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      const styles = {
+        success: "bg-emerald-950/95 border-emerald-500 text-emerald-200",
+        error: "bg-rose-950/95 border-rose-500 text-rose-200",
+        info: "bg-stone-900/95 border-amber-500 text-amber-200"
+      };
+      toast.className = `pointer-events-auto border rounded-xl px-3.5 py-2.5 text-xs font-semibold shadow-2xl transition ${styles[type] || styles.info}`;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3500);
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+    }
+
+    // =========================================================================
+    // KHỞI TẠO TRANG
+    // =========================================================================
+    window.addEventListener("DOMContentLoaded", () => {
+      switchGameType("xiangqi");
+      updateTimerUI();
+    });
+  </script>
+</body>
+</html>
